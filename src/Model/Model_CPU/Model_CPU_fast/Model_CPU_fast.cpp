@@ -14,23 +14,58 @@ Model_CPU_fast
 ::Model_CPU_fast(const Initstate& initstate, Particles& particles)
 : Model_CPU(initstate, particles)
 {
+    
 }
+
 
 void Model_CPU_fast
 ::step()
 {
     std::fill(accelerationsx.begin(), accelerationsx.end(), 0);
-    std::fill(accelerationsy.begin(), accelerationsy.end(), 0);
-    std::fill(accelerationsz.begin(), accelerationsz.end(), 0);
+	std::fill(accelerationsy.begin(), accelerationsy.end(), 0);
+	std::fill(accelerationsz.begin(), accelerationsz.end(), 0);
+    #pragma omp parallel for
+        for (int i = 0; i < n_particles; i++)
+        {
+            for (int j = 0; j < n_particles; j++)
+            {
+                if(i != j)
+                {
+                    const float diffx = particles.x[j] - particles.x[i];
+                    const float diffy = particles.y[j] - particles.y[i];
+                    const float diffz = particles.z[j] - particles.z[i];
 
-// OMP  version
-// #pragma omp parallel for
-//     for (int i = 0; i < n_particles; i ++)
-//     {
-//     }
+                    float dij = diffx * diffx + diffy * diffy + diffz * diffz;
 
+                    if (dij < 1.0)
+                    {
+                        dij = 10.0;
+                    }
+                    else
+                    {
+                        dij = std::sqrt(dij);
+                        dij = 10.0 / (dij * dij * dij);
+                    }
+
+                    accelerationsx[i] += diffx * dij * initstate.masses[j];
+                    accelerationsy[i] += diffy * dij * initstate.masses[j];
+                    accelerationsz[i] += diffz * dij * initstate.masses[j];
+                }
+            }
+        }
+    #pragma omp parallel for
+        for (int i = 0; i < n_particles; i++)
+        {
+            velocitiesx[i] += accelerationsx[i] * 2.0f;
+            velocitiesy[i] += accelerationsy[i] * 2.0f;
+            velocitiesz[i] += accelerationsz[i] * 2.0f;
+            particles.x[i] += velocitiesx   [i] * 0.1f;
+            particles.y[i] += velocitiesy   [i] * 0.1f;
+            particles.z[i] += velocitiesz   [i] * 0.1f;
+        }
 
 // OMP + xsimd version
+
 // #pragma omp parallel for
 //     for (int i = 0; i < n_particles; i += b_type::size)
 //     {
@@ -42,9 +77,65 @@ void Model_CPU_fast
 //               b_type raccy_i = b_type::load_unaligned(&accelerationsy[i]);
 //               b_type raccz_i = b_type::load_unaligned(&accelerationsz[i]);
 
-//         ...
+//         for (int j = 0; j < n_particles; j += b_type::size)
+//         {
+//             // load registers body j
+//             const b_type rposx_j = b_type::load_unaligned(&particles.x[j]);
+//             const b_type rposy_j = b_type::load_unaligned(&particles.y[j]);
+//             const b_type rposz_j = b_type::load_unaligned(&particles.z[j]);
+//             const b_type rmass_j = b_type::load_unaligned(&initstate.masses[j]);
+
+//             // compute the distance between body i and body j
+//             const b_type diffx = rposx_j - rposx_i;
+//             const b_type diffy = rposy_j - rposy_i;
+//             const b_type diffz = rposz_j - rposz_i;
+
+//             b_type dij = diffx * diffx + diffy * diffy + diffz * diffz;
+
+//             // compute the acceleration contribution of body j on body i
+//             if (dij < 1.0)
+//             {
+//                 dij = b_type(10.0f);
+//             }
+//             else
+//             {
+//                 dij = xs::sqrt(dij);
+//                 dij = b_type(10.0f) / (dij * dij * dij);
+//             }
+
+//             raccx_i += diffx * dij * rmass_j;
+//             raccy_i += diffy * dij * rmass_j;
+//             raccz_i += diffz * dij * rmass_j;
+
+//             // store the updated acceleration for body i
+//             raccx_i.store_unaligned(&accelerationsx[i]);
+//             raccy_i.store_unaligned(&accelerationsy[i]);
+//             raccz_i.store_unaligned(&accelerationsz[i]);
+//         }
 //     }
 
+//     #pragma omp parallel for
+//     	for (int i = 0; i < n_particles; i++)
+// 	{
+//         //load
+//         const b_type raccx_i = b_type::load_unaligned(&accelerationsx[i]);
+//         const b_type raccy_i = b_type::load_unaligned(&accelerationsy[i]);
+//         const b_type raccz_i = b_type::load_unaligned(&accelerationsz[i]);
+//         b_type rvelx_i = b_type::load_unaligned(&velocitiesx[i]);
+//         b_type rvely_i = b_type::load_unaligned(&velocitiesy[i]);
+//         b_type rvelz_i = b_type::load_unaligned(&velocitiesz[i]);
+//         b_type rposx_i = b_type::load_unaligned(&particles.x[i]);
+//         b_type rposy_i = b_type::load_unaligned(&particles.y[i]);
+//         b_type rposz_i = b_type::load_unaligned(&particles.z[i]);
+
+
+// 		rvelx_i = rvelx_i + raccx_i * 2.0f;
+// 		rvely_i = rvely_i + raccy_i * 2.0f;
+// 		rvelz_i = rvelz_i + raccz_i * 2.0f;
+// 		particles.x[i] = rposx_i + rvelx_i * 0.1f;
+// 		particles.y[i] = rposy_i + rvely_i * 0.1f;
+// 		particles.z[i] = rposz_i + rvelz_i * 0.1f;
+// 	}
 }
 
 #endif // GALAX_MODEL_CPU_FAST

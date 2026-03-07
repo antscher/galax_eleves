@@ -102,16 +102,19 @@ Model_GPU
 void Model_GPU
 ::step()
 {
+   	update_position_gpu(positionsGPU, velocitiesGPU, accelerationsGPU, massesGPU, n_particles);
+
 	cuda_memcpy(positionsf3.data(), positionsGPU, n_particles * sizeof(float3), cudaMemcpyDeviceToHost);
 
-	update_position_gpu(positionsGPU, velocitiesGPU, accelerationsGPU, massesGPU, n_particles);
-	
+
 	for (int i = 0; i < n_particles; i++)
 	{
 		particles.x[i] = positionsf3[i].x;
 		particles.y[i] = positionsf3[i].y;
 		particles.z[i] = positionsf3[i].z;
 	}
+
+
 }
 
 #endif // GALAX_MODEL_GPU

@@ -15,31 +15,29 @@ __global__ void compute_acc(float3 * positionsGPU, float3 * velocitiesGPU, float
 	accelerationsGPU[i].z = 0.0f;
 
 	for (int j = 0; j < n_particles; j++)
-		{
-			if(i != j)
-			{
-				const float diffx = positionsGPU[j].x - positionsGPU[i].x;
-				const float diffy = positionsGPU[j].y - positionsGPU[i].y;
-				const float diffz = positionsGPU[j].z - positionsGPU[i].z;
+	{
+		if(i == j)continue;
 
-				float dij = diffx * diffx + diffy * diffy + diffz * diffz;
+		const float diffx = positionsGPU[j].x - positionsGPU[i].x;
+		const float diffy = positionsGPU[j].y - positionsGPU[i].y;
+		const float diffz = positionsGPU[j].z - positionsGPU[i].z;
 
-				if (dij < 1.0)
-				{
-					dij = 10.0;
-				}
-				else
-				{
-					dij = std::sqrt(dij);
-					dij = 10.0 / (dij * dij * dij);
-				}
+		float dij = diffx * diffx + diffy * diffy + diffz * diffz;
 
-				accelerationsGPU[i].x += diffx * dij * massesGPU[j];
-				accelerationsGPU[i].y += diffy * dij * massesGPU[j];
-				accelerationsGPU[i].z += diffz * dij * massesGPU[j];
+		if (dij < 1.0)  // ← DIVERGENCE : split dans les threads
+        {
+     			dij = 10.0;
+        }
+        else
+        {
+     			dij = std::sqrt(dij);  // Opération coûteuse !
+     			dij = 10.0 / (dij * dij * dij);
+        }
 
-			}
-		}
+		accelerationsGPU[i].x += diffx * dij * massesGPU[j];
+		accelerationsGPU[i].y += diffy * dij * massesGPU[j];
+		accelerationsGPU[i].z += diffz * dij * massesGPU[j];
+	}
 }
 
 __global__ void maj_pos(float3 * positionsGPU, float3 * velocitiesGPU, float3 * accelerationsGPU, int n_particles)
@@ -59,7 +57,7 @@ __global__ void maj_pos(float3 * positionsGPU, float3 * velocitiesGPU, float3 * 
 
 void update_position_cu(float3* positionsGPU, float3* velocitiesGPU, float3* accelerationsGPU, float* massesGPU, int n_particles)
 {
-	int nthreads = 128;
+	int nthreads = 256;
 	int nblocks =  (n_particles + (nthreads -1)) / nthreads;
 
 	compute_acc<<<nblocks, nthreads>>>(positionsGPU, velocitiesGPU, accelerationsGPU, massesGPU, n_particles);

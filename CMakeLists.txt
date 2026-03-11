@@ -46,6 +46,7 @@ if(GALAX_LINK_CUDA)
     add_library (galax_cuda SHARED ${SRC_FILES_CUDA})
 endif(GALAX_LINK_CUDA)
 add_executable(galax ${SRC_FILES_MAIN})
+set_target_properties(galax PROPERTIES COMPILE_FLAGS "-save-temps")
 
 # cli
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/cli/include/CLI/CLI.hpp")
@@ -72,6 +73,7 @@ endif()
 if(GALAX_LINK_CUDA)
     target_link_libraries(galax_cuda PUBLIC galax_display)
     target_link_libraries(galax      PUBLIC galax_cuda)
+    target_compile_options(galax_cuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--keep;-src-in-ptx>)
 endif(GALAX_LINK_CUDA)
 
 target_link_libraries(galax      PUBLIC galax_display)
@@ -134,4 +136,3 @@ if(GALAX_LINK_SDL2)
         target_link_libraries(galax_display PUBLIC ${SDL2_LIBRARIES})
     endif(SDL2_FOUND)
 endif(GALAX_LINK_SDL2)
-

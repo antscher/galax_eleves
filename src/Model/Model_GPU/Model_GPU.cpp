@@ -31,7 +31,7 @@ inline bool cuda_memcpy(void * dst, const void * src, size_t count, enum cudaMem
 	return true;
 }
 
-void update_position_gpu(float3* positionsGPU, float3* velocitiesGPU, float* massesGPU, int n_particles)
+void update_position_gpu(float4* positionsGPU, float4* velocitiesGPU, float* massesGPU, int n_particles)
 {
 	update_position_cu(positionsGPU, velocitiesGPU, massesGPU, n_particles);
 	cudaError_t cudaStatus;
@@ -45,8 +45,7 @@ Model_GPU
 ::Model_GPU(const Initstate& initstate, Particles& particles)
 : Model(initstate, particles),
   positionsf3    (n_particles),
-  velocitiesf3   (n_particles),
-  accelerationsf3(n_particles)
+  velocitiesf3   (n_particles)
 {
 	// init cuda
 	cudaError_t cudaStatus;
@@ -65,17 +64,17 @@ Model_GPU
 		velocitiesf3[i].z    = initstate.velocitiesz[i];
 	}
 
-	cuda_malloc((void**)&positionsGPU,     n_particles * sizeof(float3));
+	cuda_malloc((void**)&positionsGPU,     n_particles * sizeof(float4));
 
-	cuda_malloc((void**)&velocitiesGPU,     n_particles * sizeof(float3));
-
-
-	cuda_malloc((void**)&massesGPU,     n_particles * sizeof(float3));
+	cuda_malloc((void**)&velocitiesGPU,     n_particles * sizeof(float4));
 
 
-	cuda_memcpy(positionsGPU,  positionsf3.data()     , n_particles * sizeof(float3), cudaMemcpyHostToDevice);
+	cuda_malloc((void**)&massesGPU,     n_particles * sizeof(float));
 
-	cuda_memcpy(velocitiesGPU,  velocitiesf3.data()     , n_particles * sizeof(float3), cudaMemcpyHostToDevice);
+
+	cuda_memcpy(positionsGPU,  positionsf3.data()     , n_particles * sizeof(float4), cudaMemcpyHostToDevice);
+
+	cuda_memcpy(velocitiesGPU,  velocitiesf3.data()     , n_particles * sizeof(float4), cudaMemcpyHostToDevice);
 
 	cuda_memcpy(massesGPU,  initstate.masses.data()     , n_particles * sizeof(float), cudaMemcpyHostToDevice);
 
@@ -97,7 +96,7 @@ void Model_GPU
 {
    	update_position_gpu(positionsGPU, velocitiesGPU, massesGPU, n_particles);
 
-	cuda_memcpy(positionsf3.data(), positionsGPU, n_particles * sizeof(float3), cudaMemcpyDeviceToHost);
+	cuda_memcpy(positionsf3.data(), positionsGPU, n_particles * sizeof(float4), cudaMemcpyDeviceToHost);
 
 
 	for (int i = 0; i < n_particles; i++)

@@ -5,7 +5,7 @@
 #define DIFF_T (0.1f)
 #define EPS (1.0f)
 
-__global__ void compute_acc(float3 * positionsGPU, float3 * velocitiesGPU, float* massesGPU, int n_particles)
+__global__ void compute_acc(float * positionXGPU,float * positionYGPU,float * positionZGPU, float3 * velocitiesGPU, float* massesGPU, int n_particles)
 {
 	unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i >= (unsigned int)n_particles) return;
@@ -16,19 +16,19 @@ __global__ void compute_acc(float3 * positionsGPU, float3 * velocitiesGPU, float
 	{
 		if(i == j)continue;
 
-		const float diffx = positionsGPU[j].x - positionsGPU[i].x;
-		const float diffy = positionsGPU[j].y - positionsGPU[i].y;
-		const float diffz = positionsGPU[j].z - positionsGPU[i].z;
+		const float diffx = positionXGPU[j] - positionXGPU[i];
+		const float diffy = positionYGPU[j] - positionYGPU[i];
+		const float diffz = positionZGPU[j] - positionZGPU[i];
 
 		float dij = diffx * diffx + diffy * diffy + diffz * diffz;
 
-		if (dij < 1.0)  // ← DIVERGENCE : split dans les threads
+		if (dij < 1.0)
         {
      			dij = 10.0;
         }
         else
         {
-     			dij = std::sqrt(dij);  // Opération coûteuse !
+     			dij = std::sqrt(dij);
      			dij = 10.0 / (dij * dij * dij);
         }
 
@@ -44,26 +44,26 @@ __global__ void compute_acc(float3 * positionsGPU, float3 * velocitiesGPU, float
 
 }
 
-__global__ void maj_pos(float3 * positionsGPU, float3 * velocitiesGPU, int n_particles)
+__global__ void maj_pos(float * positionXGPU,float * positionYGPU,float * positionZGPU, float3 * velocitiesGPU, int n_particles)
 {
 	unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i >= (unsigned int)n_particles) return;
 
-	positionsGPU[i].x += velocitiesGPU[i].x * 0.1f;
-	positionsGPU[i].y += velocitiesGPU[i].y * 0.1f;
-	positionsGPU[i].z += velocitiesGPU[i].z * 0.1f;
+	positionXGPU[i] += velocitiesGPU[i].x * 0.1f;
+	positionYGPU[i] += velocitiesGPU[i].y * 0.1f;
+	positionZGPU[i] += velocitiesGPU[i].z * 0.1f;
 
 
 }
 
-void update_position_cu(float3* positionsGPU, float3* velocitiesGPU, float* massesGPU, int n_particles)
+void update_position_cu(float * positionXGPU,float * positionYGPU,float * positionZGPU, float3* velocitiesGPU, float* massesGPU, int n_particles)
 {
 	int nthreads = 256;
 	int nblocks =  (n_particles + (nthreads -1)) / nthreads;
 
-	compute_acc<<<nblocks, nthreads>>>(positionsGPU, velocitiesGPU, massesGPU, n_particles);
+	compute_acc<<<nblocks, nthreads>>>(positionXGPU, positionYGPU, positionZGPU, velocitiesGPU, massesGPU, n_particles);
 
-	maj_pos    <<<nblocks, nthreads>>>(positionsGPU, velocitiesGPU, n_particles);
+	maj_pos    <<<nblocks, nthreads>>>(positionXGPU, positionYGPU, positionZGPU, velocitiesGPU, n_particles);
 }
 
 

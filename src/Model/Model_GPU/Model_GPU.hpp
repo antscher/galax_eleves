@@ -12,13 +12,16 @@ class Model_GPU : public Model
 {
 private:
 
-	std::vector<float3> positionsf3    ;
+	std::vector<float> positionXf    ;
+	std::vector<float> positionYf    ;
+	std::vector<float> positionZf    ;
 	std::vector<float3> velocitiesf3   ;
 	std::vector<float3> accelerationsf3;
 
-	float3* positionsGPU;
+	float*  positionXGPU;
+	float*  positionYGPU;
+	float*  positionZGPU;
 	float3* velocitiesGPU;
-	float3* accelerationsGPU;
 	float*  massesGPU;
 
 public:

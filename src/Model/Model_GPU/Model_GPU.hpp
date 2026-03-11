@@ -17,7 +17,6 @@ private:
 
 	float4* positionsGPU;
 	float4* velocitiesGPU;
-	float*  massesGPU;
 
 public:
 	Model_GPU(const Initstate& initstate, Particles& particles);

@@ -5,7 +5,7 @@
 #define DIFF_T (0.1f)
 #define EPS (1.0f)
 
-__global__ void compute_acc(float4 * positionsGPU, float4 * velocitiesGPU, float* massesGPU, int n_particles)
+__global__ void compute_acc(float4 * positionsGPU, float4 * velocitiesGPU, int n_particles)
 {
 	unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i >= (unsigned int)n_particles) return;
@@ -32,9 +32,9 @@ __global__ void compute_acc(float4 * positionsGPU, float4 * velocitiesGPU, float
      			dij = 10.0f * (dij * dij * dij);
         }
 
-		acc.x += diffx * dij * massesGPU[j];
-		acc.y += diffy * dij * massesGPU[j];
-		acc.z += diffz * dij * massesGPU[j];
+		acc.x += diffx * dij * positionsGPU[j].w;
+		acc.y += diffy * dij * positionsGPU[j].w;
+		acc.z += diffz * dij * positionsGPU[j].w;
 
 
 	}
@@ -55,12 +55,12 @@ __global__ void maj_pos(float4 * positionsGPU, float4 * velocitiesGPU, int n_par
 
 }
 
-void update_position_cu(float4* positionsGPU, float4* velocitiesGPU, float* massesGPU, int n_particles)
+void update_position_cu(float4* positionsGPU, float4* velocitiesGPU, int n_particles)
 {
 	int nthreads = 256;
 	int nblocks =  (n_particles + (nthreads -1)) / nthreads;
 
-	compute_acc<<<nblocks, nthreads>>>(positionsGPU, velocitiesGPU, massesGPU, n_particles);
+	compute_acc<<<nblocks, nthreads>>>(positionsGPU, velocitiesGPU, n_particles);
 
 	maj_pos    <<<nblocks, nthreads>>>(positionsGPU, velocitiesGPU, n_particles);
 }

@@ -31,9 +31,9 @@ inline bool cuda_memcpy(void * dst, const void * src, size_t count, enum cudaMem
 	return true;
 }
 
-void update_position_gpu(float4* positionsGPU, float4* velocitiesGPU, float* massesGPU, int n_particles)
+void update_position_gpu(float4* positionsGPU, float4* velocitiesGPU, int n_particles)
 {
-	update_position_cu(positionsGPU, velocitiesGPU, massesGPU, n_particles);
+	update_position_cu(positionsGPU, velocitiesGPU, n_particles);
 	cudaError_t cudaStatus;
 	cudaStatus = cudaDeviceSynchronize();
 	if (cudaStatus != cudaSuccess)
@@ -59,6 +59,7 @@ Model_GPU
 		positionsf3[i].x     = initstate.positionsx [i];
 		positionsf3[i].y     = initstate.positionsy [i];
 		positionsf3[i].z     = initstate.positionsz [i];
+		positionsf3[i].w     = initstate.masses[i];
 		velocitiesf3[i].x    = initstate.velocitiesx[i];
 		velocitiesf3[i].y    = initstate.velocitiesy[i];
 		velocitiesf3[i].z    = initstate.velocitiesz[i];
@@ -68,16 +69,9 @@ Model_GPU
 
 	cuda_malloc((void**)&velocitiesGPU,     n_particles * sizeof(float4));
 
-
-	cuda_malloc((void**)&massesGPU,     n_particles * sizeof(float));
-
-
 	cuda_memcpy(positionsGPU,  positionsf3.data()     , n_particles * sizeof(float4), cudaMemcpyHostToDevice);
 
 	cuda_memcpy(velocitiesGPU,  velocitiesf3.data()     , n_particles * sizeof(float4), cudaMemcpyHostToDevice);
-
-	cuda_memcpy(massesGPU,  initstate.masses.data()     , n_particles * sizeof(float), cudaMemcpyHostToDevice);
-
 }
 
 Model_GPU
@@ -87,14 +81,12 @@ Model_GPU
 
 	cudaFree((void**)&velocitiesGPU);
 
-
-	cudaFree((void**)&massesGPU);
 }
 
 void Model_GPU
 ::step()
 {
-   	update_position_gpu(positionsGPU, velocitiesGPU, massesGPU, n_particles);
+   	update_position_gpu(positionsGPU, velocitiesGPU, n_particles);
 
 	cuda_memcpy(positionsf3.data(), positionsGPU, n_particles * sizeof(float4), cudaMemcpyDeviceToHost);
 

@@ -15,13 +15,16 @@ private:
 	std::vector<float> positionXf    ;
 	std::vector<float> positionYf    ;
 	std::vector<float> positionZf    ;
-	std::vector<float3> velocitiesf3   ;
-	std::vector<float3> accelerationsf3;
+	std::vector<float> velocityXf   ;
+	std::vector<float> velocityYf   ;
+	std::vector<float> velocityZf   ;
 
 	float*  positionXGPU;
 	float*  positionYGPU;
 	float*  positionZGPU;
-	float3* velocitiesGPU;
+	float*  velocityXGPU;
+	float*  velocityYGPU;
+	float*  velocityZGPU;
 	float*  massesGPU;
 
 public:

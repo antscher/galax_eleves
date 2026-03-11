@@ -5,7 +5,7 @@
 #define DIFF_T (0.1f)
 #define EPS (1.0f)
 
-__global__ void compute_acc(float * positionXGPU,float * positionYGPU,float * positionZGPU, float3 * velocitiesGPU, float* massesGPU, int n_particles)
+__global__ void compute_acc(float * positionXGPU,float * positionYGPU,float * positionZGPU, float * velocityXGPU,float * velocityYGPU,float * velocityZGPU, float* massesGPU, int n_particles)
 {
 	unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i >= (unsigned int)n_particles) return;
@@ -38,32 +38,32 @@ __global__ void compute_acc(float * positionXGPU,float * positionYGPU,float * po
 
 
 	}
-	velocitiesGPU[i].x += acc.x * 2.0f;
-	velocitiesGPU[i].y += acc.y * 2.0f;
-	velocitiesGPU[i].z += acc.z * 2.0f;
+	velocityXGPU[i] += acc.x * 2.0f;
+	velocityYGPU[i] += acc.y * 2.0f;
+	velocityZGPU[i] += acc.z * 2.0f;
 
 }
 
-__global__ void maj_pos(float * positionXGPU,float * positionYGPU,float * positionZGPU, float3 * velocitiesGPU, int n_particles)
+__global__ void maj_pos(float * positionXGPU,float * positionYGPU,float * positionZGPU,  float * velocityXGPU,float * velocityYGPU,float * velocityZGPU, int n_particles)
 {
 	unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i >= (unsigned int)n_particles) return;
 
-	positionXGPU[i] += velocitiesGPU[i].x * 0.1f;
-	positionYGPU[i] += velocitiesGPU[i].y * 0.1f;
-	positionZGPU[i] += velocitiesGPU[i].z * 0.1f;
+	positionXGPU[i] += velocityXGPU[i] * 0.1f;
+	positionYGPU[i] += velocityYGPU[i] * 0.1f;
+	positionZGPU[i] += velocityZGPU[i] * 0.1f;
 
 
 }
 
-void update_position_cu(float * positionXGPU,float * positionYGPU,float * positionZGPU, float3* velocitiesGPU, float* massesGPU, int n_particles)
+void update_position_cu(float * positionXGPU,float * positionYGPU,float * positionZGPU,  float * velocityXGPU,float * velocityYGPU,float * velocityZGPU, float* massesGPU, int n_particles)
 {
 	int nthreads = 256;
 	int nblocks =  (n_particles + (nthreads -1)) / nthreads;
 
-	compute_acc<<<nblocks, nthreads>>>(positionXGPU, positionYGPU, positionZGPU, velocitiesGPU, massesGPU, n_particles);
+	compute_acc<<<nblocks, nthreads>>>(positionXGPU, positionYGPU, positionZGPU,velocityXGPU, velocityYGPU, velocityZGPU, massesGPU, n_particles);
 
-	maj_pos    <<<nblocks, nthreads>>>(positionXGPU, positionYGPU, positionZGPU, velocitiesGPU, n_particles);
+	maj_pos    <<<nblocks, nthreads>>>(positionXGPU, positionYGPU, positionZGPU, velocityXGPU, velocityYGPU, velocityZGPU, n_particles);
 }
 
 

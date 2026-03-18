@@ -70,9 +70,9 @@ Model_GPU
 
 	cuda_malloc((void**)&velocitiesGPU,     (n_pat_256) * sizeof(float4));
 
-	cuda_memcpy(positionsGPU,  positionsf3.data()     , (n_pat_256) * sizeof(float4), cudaMemcpyHostToDevice);
+	cuda_memcpy(positionsGPU,  positionsf3.data()     , (n_particles) * sizeof(float4), cudaMemcpyHostToDevice);
 
-	cuda_memcpy(velocitiesGPU,  velocitiesf3.data()     , (n_pat_256) * sizeof(float4), cudaMemcpyHostToDevice);
+	cuda_memcpy(velocitiesGPU,  velocitiesf3.data()     , (n_particles) * sizeof(float4), cudaMemcpyHostToDevice);
 }
 
 Model_GPU

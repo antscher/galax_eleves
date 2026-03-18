@@ -5,7 +5,7 @@
 
 #include <stdio.h>
 
-void update_position_cu(float4* positionsGPU, float4* velocitiesGPU, int n_particles);
+void update_position_cu(float4* positionsGPU, float4* velocitiesGPU, int n_particles,int n_pat_256);
 #endif
 
 #endif // GALAX_MODEL_GPU

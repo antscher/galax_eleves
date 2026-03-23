@@ -8,49 +8,61 @@
 
 __global__ void compute_acc(float4 * positionsGPU, float4 * velocitiesGPU, int n_particles)
 {
-	unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-	if (i >= (unsigned int)n_particles) return;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+        if (i >= n_padded) return;
 
-	__shared__ float4 tile[BLOCK_SIZE];
+        //  (Double Buffering setup)
+        __shared__ float4 tile[2][BLOCK_SIZE];
 
-	float4 p_i = positionsGPU[i];
-	float4 acc = {0.0f, 0.0f, 0.0f, 0.0f};
+        float4 p_i = positionsGPU[i];
+        float4 acc = {0.0f, 0.0f, 0.0f, 0.0f};
 
-	int num_tiles = n_particles / BLOCK_SIZE;
+        int num_tiles = n_padded / BLOCK_SIZE;
 
-	for (int t = 0; t < num_tiles; t++) {
-		//if(i == j)continue;
-		// Chargement
-		int j_global = t * BLOCK_SIZE + threadIdx.x;
-        tile[threadIdx.x] = positionsGPU[j_global];
-
+        // 1. Pre-load the first tile
+        tile[0][threadIdx.x] = positionsGPU[threadIdx.x];
         __syncthreads();
 
-        for (int j = 0; j < BLOCK_SIZE; j++) {
-            float4 p_j = tile[j];
-    		const float diffx = p_j.x - p_i.x;
-    		const float diffy = p_j.y - p_i.y;
-    		const float diffz = p_j.z - p_i.z;
+        int current = 0; // Index of the tile we are computing
+        int next = 1;    // Index of the tile we are loading
 
-    		float dij = diffx * diffx + diffy * diffy + diffz * diffz;
+        for (int t = 0; t < num_tiles; t++) {
 
-    		if (dij < 1.0f)
-            {
-         			dij = 10.0f;
-            }
-            else
-            {
-         			dij = rsqrtf(dij);  // Opération coûteuse !
-         			dij = 10.0f * (dij * dij * dij);
+            // 2. Start loading the next tile (if it exists)
+            if (t + 1 < num_tiles) {
+                int j_global = (t + 1) * BLOCK_SIZE + threadIdx.x;
+                tile[next][threadIdx.x] = positionsGPU[j_global];
             }
 
-    		acc.x += diffx * dij * p_j.w;
-    		acc.y += diffy * dij * p_j.w;
-    		acc.z += diffz * dij * p_j.w;
+            // 3. while it loads, comput interactions using the current tile
+            for (int j = 0; j < BLOCK_SIZE; j++) {
+                float4 p_j = tile[current][j];
+
+                const float diffx = p_j.x - p_i.x;
+                const float diffy = p_j.y - p_i.y;
+                const float diffz = p_j.z - p_i.z;
+
+                float dij = diffx * diffx + diffy * diffy + diffz * diffz;
+
+                if (dij < 1.0f) {
+                    dij = 10.0f;
+                } else {
+                    dij = rsqrtf(dij);
+                    dij = 10.0f * (dij * dij * dij);
+                }
+
+                acc.x = fmaf(diffx, dij * p_j.w, acc.x);
+                acc.y = fmaf(diffy, dij * p_j.w, acc.y);
+                acc.z = fmaf(diffz, dij * p_j.w, acc.z);
+            }
+
+            // 4. Wait for both the computation and the loading of the next tile to finish
+            __syncthreads();
+
+            // Swap the roles  for the next iteration
+            current = 1 - current;
+            next = 1 - next;
         }
-        //Wait for end of calcul block
-        __syncthreads();
-	}
 	velocitiesGPU[i].x = fmaf(acc.x , 2.0f, velocitiesGPU[i].x);
 	velocitiesGPU[i].y = fmaf(acc.y , 2.0f, velocitiesGPU[i].y);
 	velocitiesGPU[i].z = fmaf(acc.z , 2.0f, velocitiesGPU[i].z);

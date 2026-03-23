@@ -9,7 +9,7 @@
 __global__ void compute_acc(float4 * positionsGPU, float4 * velocitiesGPU, int n_particles)
 {
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i >= n_padded) return;
+        if (i >= n_particles) return;
 
         //  (Double Buffering setup)
         __shared__ float4 tile[2][BLOCK_SIZE];
@@ -17,7 +17,7 @@ __global__ void compute_acc(float4 * positionsGPU, float4 * velocitiesGPU, int n
         float4 p_i = positionsGPU[i];
         float4 acc = {0.0f, 0.0f, 0.0f, 0.0f};
 
-        int num_tiles = n_padded / BLOCK_SIZE;
+        int num_tiles = n_particles / BLOCK_SIZE;
 
         // 1. Pre-load the first tile
         tile[0][threadIdx.x] = positionsGPU[threadIdx.x];

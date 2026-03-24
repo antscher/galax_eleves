@@ -69,26 +69,33 @@ __global__ void compute_acc(float4 * positionsGPU, float4 * velocitiesGPU, int n
 
 }
 
-__global__ void maj_pos(float4 * positionsGPU, float4 * velocitiesGPU, int n_particles)
+__global__ void maj_pos(float4 * positionsGPU, float4 * velocitiesGPU,
+                        float * outX, float * outY, float * outZ,
+                        int n_particles)
 {
-	unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-	if (i >= (unsigned int)n_particles) return;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= (unsigned int)n_particles) return;
 
-	positionsGPU[i].x = fmaf(velocitiesGPU[i].x, 0.1f, positionsGPU[i].x);
-	positionsGPU[i].y = fmaf(velocitiesGPU[i].y, 0.1f, positionsGPU[i].y);
-	positionsGPU[i].z = fmaf(velocitiesGPU[i].z, 0.1f, positionsGPU[i].z);
 
+    positionsGPU[i].x = fmaf(velocitiesGPU[i].x, 0.1f, positionsGPU[i].x);
+    positionsGPU[i].y = fmaf(velocitiesGPU[i].y, 0.1f, positionsGPU[i].y);
+    positionsGPU[i].z = fmaf(velocitiesGPU[i].z, 0.1f, positionsGPU[i].z);
+
+    outX[i] = positionsGPU[i].x;
+    outY[i] = positionsGPU[i].y;
+    outZ[i] = positionsGPU[i].z;
 }
 
-void update_position_cu(float4* positionsGPU, float4* velocitiesGPU, int n_particles, int n_pat_256)
+void update_position_cu(float4* positionsGPU, float4* velocitiesGPU,
+                        float* outX, float* outY, float* outZ,
+                        int n_particles, int n_pat_256)
 {
-	int nthreads = 256;
-	int nblocks =  (n_particles + (nthreads -1)) / nthreads;
+    int nthreads = 256;
+    int nblocks =  (n_particles + (nthreads -1)) / nthreads;
 
-	compute_acc<<<nblocks, nthreads>>>(positionsGPU, velocitiesGPU, n_pat_256);
+    compute_acc<<<nblocks, nthreads>>>(positionsGPU, velocitiesGPU, n_pat_256);
 
-	maj_pos    <<<nblocks, nthreads>>>(positionsGPU, velocitiesGPU, n_particles);
+    maj_pos<<<nblocks, nthreads>>>(positionsGPU, velocitiesGPU, outX, outY, outZ, n_particles);
 }
-
 
 #endif // GALAX_MODEL_GPU

@@ -31,9 +31,11 @@ inline bool cuda_memcpy(void * dst, const void * src, size_t count, enum cudaMem
 	return true;
 }
 
-void update_position_gpu(float4* positionsGPU, float4* velocitiesGPU, int n_particles,int n_pat_256)
+void update_position_gpu(float4* positionsGPU, float4* velocitiesGPU, float* outX,float*  outY,float* outZ,int n_particles,int n_pat_256)
 {
-	update_position_cu(positionsGPU, velocitiesGPU, n_particles,n_pat_256);
+    update_position_cu( positionsGPU, velocitiesGPU,
+                            outX,  outY, outZ,
+                             n_particles,  n_pat_256);
 	cudaError_t cudaStatus;
 	cudaStatus = cudaDeviceSynchronize();
 	if (cudaStatus != cudaSuccess)
@@ -73,6 +75,10 @@ Model_GPU
 	cuda_memcpy(positionsGPU,  positionsf3.data()     , (n_particles) * sizeof(float4), cudaMemcpyHostToDevice);
 
 	cuda_memcpy(velocitiesGPU,  velocitiesf3.data()     , (n_particles) * sizeof(float4), cudaMemcpyHostToDevice);
+
+	cudaMalloc((void**)&outX, n_particles * sizeof(float));
+    cudaMalloc((void**)&outY, n_particles * sizeof(float));
+    cudaMalloc((void**)&outZ, n_particles * sizeof(float));
 }
 
 Model_GPU
@@ -82,22 +88,20 @@ Model_GPU
 
 	cudaFree((void**)&velocitiesGPU);
 
+	cudaFree(outX);
+    cudaFree(outY);
+    cudaFree(outZ);
+
 }
 
 void Model_GPU
 ::step()
 {
-   	update_position_gpu(positionsGPU, velocitiesGPU, n_particles,n_pat_256);
+   	update_position_gpu(positionsGPU, velocitiesGPU,outX,  outY, outZ, n_particles,n_pat_256);
 
-	cuda_memcpy(positionsf3.data(), positionsGPU, n_particles * sizeof(float4), cudaMemcpyDeviceToHost);
-
-
-	for (int i = 0; i < n_particles; i++)
-	{
-		particles.x[i] = positionsf3[i].x;
-		particles.y[i] = positionsf3[i].y;
-		particles.z[i] = positionsf3[i].z;
-	}
+    cudaMemcpy(particles.x.data(), outX, n_particles * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(particles.y.data(), outY, n_particles * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(particles.z.data(), outZ, n_particles * sizeof(float), cudaMemcpyDeviceToHost);
 
 
 }

@@ -14,7 +14,7 @@ Model_CPU_fast
 ::Model_CPU_fast(const Initstate& initstate, Particles& particles)
 : Model_CPU(initstate, particles)
 {
-    
+
 }
 
 

@@ -11,7 +11,7 @@ __global__ void compute_acc(float4 * positionsGPU, float4 * velocitiesGPU, int n
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= n_particles) return;
 
-    //  (Double Buffering setup)
+    // (Double Buffering setup)
     __shared__ float4 tile[2][BLOCK_SIZE];
 
     float4 p_i = positionsGPU[i];
@@ -34,7 +34,8 @@ __global__ void compute_acc(float4 * positionsGPU, float4 * velocitiesGPU, int n
             tile[next][threadIdx.x] = positionsGPU[j_global];
         }
 
-        // 3. while it loads, comput interactions using the current tile
+        // 3. Compute interactions using the current tile
+        //#pragma unroll 4
         for (int j = 0; j < BLOCK_SIZE; j++) {
             float4 p_j = tile[current][j];
 
@@ -44,28 +45,28 @@ __global__ void compute_acc(float4 * positionsGPU, float4 * velocitiesGPU, int n
 
             float dij = diffx * diffx + diffy * diffy + diffz * diffz;
 
-            if (dij < 1.0f) {
-                 dij = 10.0f;
-            } else {
-                dij = rsqrtf(dij);
-                dij = 10.0f * (dij * dij * dij);
-            }
+            //Removing the condition if
+            float max_dij = fmaxf(dij, 1.0f);
 
-            acc.x = fmaf(diffx, dij * p_j.w, acc.x);
-            acc.y = fmaf(diffy, dij * p_j.w, acc.y);
-            acc.z = fmaf(diffz, dij * p_j.w, acc.z);
+            float inv_dist = rsqrtf(max_dij);
+            float factor = 10.0f * (inv_dist * inv_dist * inv_dist);
+
+            acc.x = fmaf(diffx, factor * p_j.w, acc.x);
+            acc.y = fmaf(diffy, factor * p_j.w, acc.y);
+            acc.z = fmaf(diffz, factor * p_j.w, acc.z);
         }
 
         // 4. Wait for both the computation and the loading of the next tile to finish
         __syncthreads();
 
-        // Swap the roles  for the next iteration
+        // Swap the roles for the next iteration
         current = 1 - current;
         next = 1 - next;
     }
-	velocitiesGPU[i].x = fmaf(acc.x , 2.0f, velocitiesGPU[i].x);
-	velocitiesGPU[i].y = fmaf(acc.y , 2.0f, velocitiesGPU[i].y);
-	velocitiesGPU[i].z = fmaf(acc.z , 2.0f, velocitiesGPU[i].z);
+
+    velocitiesGPU[i].x = fmaf(acc.x, 2.0f, velocitiesGPU[i].x);
+    velocitiesGPU[i].y = fmaf(acc.y, 2.0f, velocitiesGPU[i].y);
+    velocitiesGPU[i].z = fmaf(acc.z, 2.0f, velocitiesGPU[i].z);
 
 }
 
@@ -77,9 +78,12 @@ __global__ void maj_pos(float4 * positionsGPU, float4 * velocitiesGPU,
     if (i >= (unsigned int)n_particles) return;
 
 
-    positionsGPU[i].x = fmaf(velocitiesGPU[i].x, 0.1f, positionsGPU[i].x);
-    positionsGPU[i].y = fmaf(velocitiesGPU[i].y, 0.1f, positionsGPU[i].y);
-    positionsGPU[i].z = fmaf(velocitiesGPU[i].z, 0.1f, positionsGPU[i].z);
+    float4 vel = velocitiesGPU[i];
+
+    positionsGPU[i].x = fmaf(vel.x, 0.1f, positionsGPU[i].x);
+    positionsGPU[i].y = fmaf(vel.y, 0.1f, positionsGPU[i].y);
+    positionsGPU[i].z = fmaf(vel.z, 0.1f, positionsGPU[i].z);
+
 
     outX[i] = positionsGPU[i].x;
     outY[i] = positionsGPU[i].y;

@@ -46,8 +46,6 @@ void update_position_gpu(float4* positionsGPU, float4* velocitiesGPU, float* out
 Model_GPU
 ::Model_GPU(const Initstate& initstate, Particles& particles)
 : Model(initstate, particles),
-  positionsf3    (n_particles),
-  velocitiesf3   (n_particles),
   n_pat_256(((n_particles + 255) / 256) * 256)
 {
 	// init cuda
@@ -56,6 +54,9 @@ Model_GPU
 	cudaStatus = cudaSetDevice(0);
 	if (cudaStatus != cudaSuccess)
 		std::cout << "error: unable to setup cuda device" << std::endl;
+
+	std::vector<float4> positionsf3(n_pat_256);
+	std::vector<float4> velocitiesf3(n_pat_256);
 
 	for (int i = 0; i < n_particles; i++)
 	{
@@ -67,14 +68,19 @@ Model_GPU
 		velocitiesf3[i].y    = initstate.velocitiesy[i];
 		velocitiesf3[i].z    = initstate.velocitiesz[i];
 	}
+	for (int i = n_particles; i < n_pat_256; i++)
+    {
+        positionsf3[i] = {0.0f, 0.0f, 0.0f, 0.0f};
+        velocitiesf3[i] = {0.0f, 0.0f, 0.0f, 0.0f};
+    }
 
 	cuda_malloc((void**)&positionsGPU,     (n_pat_256) * sizeof(float4));
 
 	cuda_malloc((void**)&velocitiesGPU,     (n_pat_256) * sizeof(float4));
 
-	cuda_memcpy(positionsGPU,  positionsf3.data()     , (n_particles) * sizeof(float4), cudaMemcpyHostToDevice);
+	cuda_memcpy(positionsGPU,  positionsf3.data()     , (n_pat_256) * sizeof(float4), cudaMemcpyHostToDevice);
 
-	cuda_memcpy(velocitiesGPU,  velocitiesf3.data()     , (n_particles) * sizeof(float4), cudaMemcpyHostToDevice);
+	cuda_memcpy(velocitiesGPU,  velocitiesf3.data()     , (n_pat_256) * sizeof(float4), cudaMemcpyHostToDevice);
 
 	cudaMalloc((void**)&outX, n_particles * sizeof(float));
     cudaMalloc((void**)&outY, n_particles * sizeof(float));

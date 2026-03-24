@@ -12,8 +12,6 @@ class Model_GPU : public Model
 {
 private:
 
-	std::vector<float4> positionsf3    ;
-	std::vector<float4> velocitiesf3   ;
 	const int n_pat_256;
 
 	float4* positionsGPU;

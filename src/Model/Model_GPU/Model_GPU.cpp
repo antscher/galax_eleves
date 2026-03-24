@@ -82,9 +82,9 @@ Model_GPU
 
 	cuda_memcpy(velocitiesGPU,  velocitiesf3.data()     , (n_pat_256) * sizeof(float4), cudaMemcpyHostToDevice);
 
-	cudaMalloc((void**)&outX, n_particles * sizeof(float));
-    cudaMalloc((void**)&outY, n_particles * sizeof(float));
-    cudaMalloc((void**)&outZ, n_particles * sizeof(float));
+	cuda_malloc((void**)&outX, n_particles * sizeof(float));
+    cuda_malloc((void**)&outY, n_particles * sizeof(float));
+    cuda_malloc((void**)&outZ, n_particles * sizeof(float));
 }
 
 Model_GPU
